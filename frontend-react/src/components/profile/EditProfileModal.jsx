@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { profileApi } from '../../api/profileApi';
-import { X, Save, Loader2, Sparkles, Gamepad2, Shield, Globe, Clock, MessageSquare, User } from 'lucide-react';
+import { X, Save, Loader2, Sparkles, Gamepad2, Shield, Globe, Clock, MessageSquare, User, Upload, Camera, CheckCircle2 } from 'lucide-react';
+import { getAvatarSrc } from '../../api/client';
 
 const POPULAR_GAMES = [
   'Valorant',
@@ -60,6 +61,38 @@ export default function EditProfileModal({ isOpen, onClose, currentProfile, onPr
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUploadSuccess, setAvatarUploadSuccess] = useState(false);
+
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Selected image exceeds the 5MB file size limit.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setError(null);
+    setAvatarUploadSuccess(false);
+
+    try {
+      const res = await profileApi.uploadAvatar(file);
+      const updatedProfile = res?.data || res;
+      const newAvatarUrl = updatedProfile?.avatar || updatedProfile?.avatar_url;
+      if (newAvatarUrl) {
+        setFormData((prev) => ({ ...prev, avatar: newAvatarUrl }));
+        setAvatarUploadSuccess(true);
+        setTimeout(() => setAvatarUploadSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to upload profile picture.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     if (currentProfile) {
@@ -218,6 +251,101 @@ export default function EditProfileModal({ isOpen, onClose, currentProfile, onPr
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* PROFILE PICTURE / AVATAR UPLOAD */}
+          <div style={{
+            padding: '16px',
+            borderRadius: '16px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '18px',
+            flexWrap: 'wrap',
+          }}>
+            {/* Avatar Preview */}
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #22d3ee, #8b5cf6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid rgba(34, 211, 238, 0.5)',
+              boxShadow: '0 0 15px rgba(34, 211, 238, 0.25)',
+              flexShrink: 0,
+            }}>
+              {formData.avatar ? (
+                <img
+                  src={getAvatarSrc(formData.avatar)}
+                  alt="Profile Avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {(formData.display_name || 'G').substring(0, 2).toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            {/* Avatar Controls */}
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Camera size={14} color="#22d3ee" /> Profile Picture / Avatar
+              </label>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <label
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(34, 211, 238, 0.15)',
+                    border: '1px solid rgba(34, 211, 238, 0.4)',
+                    color: '#22d3ee',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Upload size={14} />
+                  <span>{uploadingAvatar ? 'Uploading...' : 'Upload Image File'}</span>
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp, image/gif"
+                    onChange={handleAvatarFileChange}
+                    disabled={uploadingAvatar}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                {avatarUploadSuccess && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#2ed573' }}>
+                    <CheckCircle2 size={14} /> Uploaded!
+                  </span>
+                )}
+              </div>
+
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  className="inputField"
+                  value={formData.avatar}
+                  onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
+                  placeholder="Or enter direct image URL (https://...)"
+                  style={{ width: '100%', fontSize: '12px', padding: '6px 12px' }}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* DISPLAY NAME & RANK */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
             <div>

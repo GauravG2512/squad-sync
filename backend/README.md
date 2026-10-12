@@ -16,20 +16,25 @@ Production-ready FastAPI backend skeleton for **SquadSync**.
 ## Project Structure
 
 ```text
-SquadSync/
+backend/
 ├── .env.example
 ├── .gitignore
 ├── alembic.ini
 ├── requirements.txt
 ├── README.md
+├── STRUCTURE.md
+├── setup_database.py    # Automated DB creation, migrations & demo seeder
+├── seed_data.py         # Standalone test data seeder
+├── static/              # Static file storage
+│   └── avatars/         # Uploaded gamer avatars
 ├── alembic/
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
 └── app/
-    ├── main.py              # Application factory, lifespan, CORS, and router registration
-    ├── config.py            # Settings using Pydantic Settings v2
-    ├── database.py          # Async engine, sessionmaker, and get_db dependency
+    ├── main.py          # Application factory, lifespan, CORS, and router registration
+    ├── config.py        # Settings using Pydantic Settings v2
+    ├── database.py      # Async engine, sessionmaker, and get_db dependency
     ├── constants.py         # Application enums and constants
     ├── models/
     │   ├── __init__.py      # Models export registry for Alembic discovery

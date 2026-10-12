@@ -43,4 +43,15 @@ export const profileApi = {
   linkAccount: async (accountData) => {
     return apiClient.post('/games/accounts', accountData);
   },
+
+  // Upload custom avatar image
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };

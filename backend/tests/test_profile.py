@@ -118,3 +118,32 @@ def test_gamer_profile_schema_new_fields_and_aliases():
     assert profile.avatar_url == "https://cdn.squadsync.gg/avatars/ghost.png"
     assert profile.availability == "Weekends all day"
     assert profile.gaming_schedule == "Weekends all day"
+
+
+@pytest.mark.asyncio
+async def test_upload_avatar_unauthenticated(client: AsyncClient):
+    """Test POST /api/v1/profile/avatar returns 401 without authentication."""
+    files = {"file": ("test.png", b"fake_png_data", "image/png")}
+    response = await client.post("/api/v1/profile/avatar", files=files)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_upload_avatar_invalid_extension(authenticated_client: AsyncClient):
+    """Test POST /api/v1/profile/avatar rejects disallowed file extensions."""
+    files = {"file": ("malicious.exe", b"binary_data", "application/octet-stream")}
+    response = await authenticated_client.post("/api/v1/profile/avatar", files=files)
+    assert response.status_code == 400
+    data = response.json()
+    assert "unsupported file format" in (data.get("message") or data.get("detail", "")).lower()
+
+
+@pytest.mark.asyncio
+async def test_upload_avatar_success(authenticated_client: AsyncClient):
+    """Test successful avatar upload persists file and returns avatar URL."""
+    files = {"file": ("avatar.png", b"\x89PNG\r\n\x1a\nfake_image_content", "image/png")}
+    response = await authenticated_client.post("/api/v1/profile/avatar", files=files)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["data"]["avatar"].startswith("/static/avatars/")

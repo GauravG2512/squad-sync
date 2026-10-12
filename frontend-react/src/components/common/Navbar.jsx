@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { LogOut } from 'lucide-react';
+import NotificationDropdown from './NotificationDropdown';
 import logoImg from '../../assets/logo.png';
 
 export default function Navbar({ backendHealth, activeTab, onSelectTab }) {
@@ -67,6 +68,9 @@ export default function Navbar({ backendHealth, activeTab, onSelectTab }) {
 
         {isAuthenticated ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* In-App Notifications */}
+            <NotificationDropdown onNavigateTab={onSelectTab} />
+
             {/* User Badge */}
             <div 
               className="userBadge" 

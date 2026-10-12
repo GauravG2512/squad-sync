@@ -32,12 +32,15 @@ Supports **VALORANT, CS2, Apex Legends, Rainbow Six Siege, Dota 2**, and **Call 
 | 1 | **Gamer DNA™ Profiling** | 10-point behavioral questionnaire scoring aggression, tactical sense, tilt resistance, leadership, and communication style |
 | 2 | **AI Role Classification** | ML clustering predicting primary & secondary in-game roles (Duelist, Controller, Sentinel, etc.) |
 | 3 | **Compatibility Engine** | Pairwise synergy scoring (0–100%) with explainable matching justifications |
-| 4 | **Squad Hub** | Create Duo / Trio / 5-Stack squads, invite teammates, manage rosters |
+| 4 | **Squad Hub & Smart Formation** | Create Duo / Trio / 5-Stack squads, invite teammates, missing role detection, and manage rosters |
 | 5 | **Friends Network** | Global player discovery, friend request flow, online status grid |
-| 6 | **Esports News Portal** | Real-time news feed with game & category filters, admin publishing |
+| 6 | **Esports News Portal** | Real-time news feed via NewsAPI.org with TTL DB caching, game & category filters, and admin publishing |
 | 7 | **Real-Time Chat** | Low-latency (<1 s) WebSocket tactical chat — DMs, squad channels, typing indicators |
 | 8 | **Admin Console** | Platform KPI telemetry, account moderation, 48-hour SLA conduct reports |
 | 9 | **Game Integrations** | Steam OpenID / Dota 2 stats via OpenDota, Riot RSO for VALORANT / LoL accounts |
+| 10 | **Password Recovery & Reset** | Two-stage cryptographic token recovery with live security strength compliance checks |
+| 11 | **Profile Picture / Media Upload** | Multipart avatar image uploads (PNG, JPG, WEBP, GIF, max 5MB) with local static mounts |
+| 12 | **In-App Activity & Notification Center** | Real-time notification bell dropdown with 1-click friend accept/decline and system status alerts |
 
 ---
 
@@ -70,7 +73,7 @@ Supports **VALORANT, CS2, Apex Legends, Rainbow Six Siege, Dota 2**, and **Call 
 ## Project Structure
 
 ```
-SEWDLPROJ/
+squad-sync/
 ├── backend/                        # FastAPI REST API & WebSocket backend
 │   ├── app/
 │   │   ├── api/                    # Canonical routing layer (router aggregators)
@@ -80,7 +83,7 @@ SEWDLPROJ/
 │   │   │           └── health.py
 │   │   ├── routers/                # Endpoint handler modules (imported by api/)
 │   │   │   └── api_v1/
-│   │   │       └── endpoints/      # auth, chat, matchmaking, admin, ... (20 files)
+│   │   │       └── endpoints/      # auth, chat, matchmaking, admin, profile, news, ... (20 files)
 │   │   ├── core/                   # Config, database, security, DI, exceptions
 │   │   │   ├── compatibility/      # AI compatibility engine
 │   │   │   ├── matchmaking/        # AI matchmaking engine
@@ -88,15 +91,19 @@ SEWDLPROJ/
 │   │   │   ├── skill_profile/      # Skill profile generator
 │   │   │   ├── squad_recommendation/
 │   │   │   └── explanation/        # Explainability engine
-│   │   ├── models/                 # SQLAlchemy ORM models (14 tables)
+│   │   ├── models/                 # SQLAlchemy ORM models (13 tables)
 │   │   ├── schemas/                # Pydantic request/response schemas
 │   │   ├── services/               # Business logic layer (23 services)
 │   │   ├── repositories/           # Database access layer (CRUD)
 │   │   ├── providers/              # External API providers (Riot, Steam, OpenDota)
 │   │   ├── middleware/             # CORS, request logging, correlation IDs
 │   │   └── main.py                 # App factory & lifespan manager
+│   ├── static/                     # User uploads and avatar assets
+│   │   └── avatars/                # Uploaded profile pictures
 │   ├── alembic/                    # Database migration scripts
-│   ├── tests/                      # Pytest suite (265+ tests across 31 modules)
+│   ├── tests/                      # Pytest suite (268+ tests across 31 modules)
+│   ├── setup_database.py           # Automated PostgreSQL migration & demo seeder
+│   ├── seed_data.py                # Rich test account, roster, and news data
 │   ├── .env.example                # Environment variable template
 │   └── requirements.txt
 │
@@ -105,20 +112,24 @@ SEWDLPROJ/
 │       ├── api/                    # Axios API client modules
 │       ├── components/
 │       │   ├── admin/              # KPI telemetry & moderation console
-│       │   ├── auth/               # Login & registration modals
+│       │   ├── auth/               # Login, Register & Password Recovery modals
 │       │   ├── chat/               # WebSocket chat drawer
-│       │   ├── common/             # Navbar, report modals
-│       │   ├── friends/            # Friends network hub
+│       │   ├── common/             # Navbar, NotificationDropdown, report modals
+│       │   ├── friends/            # Friends network hub & request management
 │       │   ├── landing/            # Landing page
 │       │   ├── matchmaker/         # 4-step AI matchmaker (DNA survey → AI draft)
-│       │   ├── news/               # Esports news portal
+│       │   ├── news/               # Esports news portal & admin publishing modal
+│       │   ├── profile/            # Gamer Profile, Avatar file upload & DNA Card
 │       │   └── squads/             # Squad creation & roster management
 │       ├── context/                # AuthContext provider
 │       ├── hooks/                  # Custom React hooks
 │       └── utils/                  # Utility functions
 │
-├── docs/                           # SRS & design documentation
+├── docs/                           # IEEE 830 SRS & design documentation
+├── docker-compose.yml              # Pre-configured PostgreSQL 16 container (port 5431)
 ├── run.py                          # Unified dev server launcher
+├── setup_db.bat                    # Automated PostgreSQL setup script (CMD)
+├── setup_db.ps1                    # Automated PostgreSQL setup script (PowerShell)
 ├── start.bat                       # Windows one-click launcher
 └── start.ps1                       # PowerShell launcher
 ```
@@ -285,12 +296,13 @@ Run a specific test module:
 pytest tests/test_matchmaking.py -v
 ```
 
-The test suite covers **265+ test cases** across 31 modules including:
-- Auth flows, JWT validation, bcrypt hashing
+The test suite covers **268+ test cases** across 31 modules including:
+- Auth flows, JWT validation, bcrypt hashing, and password recovery
 - AI matchmaking, compatibility, and role classification engines
-- Game integrations (Riot, Steam, OpenDota) — mocked
-- WebSocket chat, squad management, friendship flows
-- Repository CRUD, service edge cases, exception handlers
+- Game integrations (Riot, Steam, OpenDota) — verified and mocked
+- WebSocket chat, squad management, friendship flows, and presence
+- Multipart profile avatar uploads and file validation
+- Repository CRUD, service edge cases, and exception handlers
 
 ---
 
@@ -304,16 +316,23 @@ Full interactive documentation is available at **http://127.0.0.1:8000/docs** wh
 |--------|------|-------------|
 | `POST` | `/api/v1/auth/register` | Register new user |
 | `POST` | `/api/v1/auth/login` | Obtain JWT access token |
+| `POST` | `/api/v1/auth/forgot-password` | Request password recovery verification token |
+| `POST` | `/api/v1/auth/reset-password` | Complete password reset using signed token |
 | `GET` | `/api/v1/profile/me` | Get authenticated user profile |
+| `PUT` | `/api/v1/profile/me` | Update gamer profile details |
+| `POST` | `/api/v1/profile/avatar` | Upload avatar image (JPG, PNG, WEBP, GIF, max 5MB) |
 | `POST` | `/api/v1/survey/submit` | Submit Gamer DNA™ survey |
-| `GET` | `/api/v1/dna/my-card` | Get Gamer DNA™ card |
+| `GET` | `/api/v1/dna/my-card` | Get Gamer DNA™ card and psychometric radar |
 | `POST` | `/api/v1/matchmaking/find` | Trigger AI squad matchmaking |
-| `GET` | `/api/v1/compatibility/{user_id}` | Get compatibility score |
-| `GET` | `/api/v1/squads/recommendations` | Get squad recommendations |
-| `POST` | `/api/v1/teams/create` | Create a squad |
-| `GET` | `/api/v1/friends/` | List friends |
-| `GET` | `/api/v1/news/` | Get esports news feed |
-| `WS` | `/api/v1/chat/ws` | WebSocket chat connection |
+| `GET` | `/api/v1/compatibility/{user_id}` | Get pairwise compatibility score & explainability |
+| `GET` | `/api/v1/squads/recommendations` | Get optimal 5-player squad recommendations |
+| `POST` | `/api/v1/teams/` | Create a competitive squad |
+| `GET` | `/api/v1/friends/` | List confirmed friends |
+| `GET` | `/api/v1/friends/requests` | List pending friend invitations |
+| `GET` | `/api/v1/news` | Get esports news & patch notes (NewsAPI + DB cache) |
+| `POST` | `/api/v1/news` | Publish news article (Admin only) |
+| `GET` | `/api/v1/admin/analytics` | Get platform KPI metrics and moderation queue |
+| `WS` | `/api/v1/chat/ws` | Real-time WebSocket tactical chat connection |
 | `GET` | `/api/v1/games/steam/link` | Initiate Steam OpenID flow |
 | `GET` | `/api/v1/games/riot/link` | Initiate Riot RSO OAuth flow |
 | `GET` | `/health` | Health check |

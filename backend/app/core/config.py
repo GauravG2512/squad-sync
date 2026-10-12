@@ -4,6 +4,7 @@ Loads settings from environment variables and .env files with strict validation.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Any
 
 from pydantic import (
@@ -51,6 +52,7 @@ class Settings(BaseSettings):
     # --------------------------------------------------------------------------
     API_V1_STR: str = "/api/v1"
     ENABLE_SWAGGER: bool = True
+    STATIC_DIR: str = str(Path(__file__).resolve().parent.parent.parent / "static")
 
     # --------------------------------------------------------------------------
     # Security & Cryptography (JWT & bcrypt)

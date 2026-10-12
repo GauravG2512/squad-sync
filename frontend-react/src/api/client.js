@@ -52,4 +52,13 @@ apiClient.interceptors.response.use(
   }
 );
 
+export const getAvatarSrc = (avatar) => {
+  if (!avatar) return null;
+  if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:')) {
+    return avatar;
+  }
+  const root = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return `${root}${avatar.startsWith('/') ? '' : '/'}${avatar}`;
+};
+
 export default apiClient;

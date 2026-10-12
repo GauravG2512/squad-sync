@@ -58,6 +58,11 @@ export function AuthProvider({ children }) {
     setIsAuthModalOpen(true);
   };
 
+  const openForgotPasswordModal = () => {
+    setAuthModalMode('forgot');
+    setIsAuthModalOpen(true);
+  };
+
   const closeAuthModal = () => {
     setIsAuthModalOpen(false);
   };
@@ -133,6 +138,7 @@ export function AuthProvider({ children }) {
     setAuthModalMode,
     openLoginModal,
     openRegisterModal,
+    openForgotPasswordModal,
     closeAuthModal,
     login,
     register,

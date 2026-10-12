@@ -64,7 +64,24 @@ export default function LoginForm() {
         </div>
 
         <div className="inputGroup">
-          <label>Password</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <label style={{ margin: 0 }}>Password</label>
+            <button
+              type="button"
+              onClick={() => setAuthModalMode('forgot')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--cyan)',
+                fontSize: '12px',
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'none',
+              }}
+            >
+              Forgot password?
+            </button>
+          </div>
           <input
             type="password"
             required

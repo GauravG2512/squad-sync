@@ -78,8 +78,8 @@ class GamerProfileBase(BaseModel):
         """Enforces valid HTTP/HTTPS URLs pointing to valid image formats or domains."""
         if v is not None and v.strip() != "":
             v = v.strip()
-            if not (v.startswith("http://") or v.startswith("https://")):
-                raise ValueError("Avatar URL must be a valid HTTP or HTTPS address.")
+            if not (v.startswith("http://") or v.startswith("https://") or v.startswith("/static/")):
+                raise ValueError("Avatar URL must be a valid HTTP or HTTPS address or local /static/ path.")
             # Verify file extension if present
             clean_url = v.split("?")[0].lower()
             valid_extensions = (".png", ".jpg", ".jpeg", ".webp", ".gif")

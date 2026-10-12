@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
+import ForgotPasswordForm from './ForgotPasswordForm';
 import logoImg from '../../assets/logo.png';
 
 export default function AuthModal() {
@@ -41,7 +42,9 @@ export default function AuthModal() {
           </h3>
         </div>
 
-        {authModalMode === 'login' ? <LoginForm /> : <RegisterForm />}
+        {authModalMode === 'login' && <LoginForm />}
+        {authModalMode === 'register' && <RegisterForm />}
+        {authModalMode === 'forgot' && <ForgotPasswordForm />}
       </div>
     </div>
   );

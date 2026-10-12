@@ -96,6 +96,12 @@ def create_application() -> FastAPI:
     app.include_router(matchmaking_router, prefix="/matchmaking", include_in_schema=False)
     app.include_router(ai_router, include_in_schema=False)
 
+    # 6. Static Files Mount (Avatar & Asset Uploads)
+    import os
+    from fastapi.staticfiles import StaticFiles
+    os.makedirs(os.path.join(settings.STATIC_DIR, "avatars"), exist_ok=True)
+    app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
+
     return app
 
 

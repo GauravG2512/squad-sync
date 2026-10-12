@@ -4,6 +4,7 @@ import { profileApi } from '../../api/profileApi';
 import GamerDnaCardView from './GamerDnaCardView';
 import EditProfileModal from './EditProfileModal';
 import GameAccountsSection from './GameAccountsSection';
+import { getAvatarSrc } from '../../api/client';
 import { 
   User, 
   Edit3, 
@@ -123,9 +124,18 @@ export default function ProfileHub({ onRetakeDna }) {
               fontFamily: "'Space Grotesk', sans-serif",
               boxShadow: '0 0 25px rgba(34, 211, 238, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
               border: '2px solid rgba(255, 255, 255, 0.2)',
-              position: 'relative'
+              position: 'relative',
+              overflow: 'hidden',
             }}>
-              {initials}
+              {(profile?.avatar || profile?.avatar_url) ? (
+                <img
+                  src={getAvatarSrc(profile?.avatar || profile?.avatar_url)}
+                  alt={displayName}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                initials
+              )}
               <div style={{
                 position: 'absolute',
                 bottom: '-2px',

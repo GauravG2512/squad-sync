@@ -3,8 +3,12 @@ GamerProfile API routes: Create, Read, and Update profiles for authenticated use
 Clean architecture implementation returning unified ApiResponse envelopes.
 """
 
-from fastapi import APIRouter, Body, status
+from datetime import datetime, timezone
+import os
+import uuid
+from fastapi import APIRouter, Body, File, HTTPException, UploadFile, status
 
+from app.core.config import settings
 from app.core.dependencies import CurrentUser, ProfileServiceDep
 from app.schemas.common import ApiResponse
 from app.schemas.profile import (
@@ -136,4 +140,74 @@ async def update_my_profile(
     return ApiResponse.ok(
         data=GamerProfileRead.model_validate(profile),
         message="Gamer profile updated successfully.",
+    )
+
+
+@router.post(
+    "/avatar",
+    response_model=ApiResponse[GamerProfileRead],
+    status_code=status.HTTP_200_OK,
+    summary="Upload Profile Picture / Avatar",
+    description="Uploads an avatar picture (JPG, PNG, WEBP, GIF, max 5MB) and updates the gamer profile.",
+)
+async def upload_avatar(
+    current_user: CurrentUser,
+    profile_service: ProfileServiceDep,
+    file: UploadFile = File(...),
+) -> ApiResponse[GamerProfileRead]:
+    """Uploads an avatar image and sets avatar URL on user profile."""
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file selected for upload.",
+        )
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file format '{ext}'. Allowed extensions: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds maximum allowed limit of 5MB.",
+        )
+
+    # Save to static uploads directory
+    avatars_dir = os.path.join(settings.STATIC_DIR, "avatars")
+    os.makedirs(avatars_dir, exist_ok=True)
+    filename = f"avatar_{current_user.id}_{int(datetime.now(timezone.utc).timestamp())}{ext}"
+    file_path = os.path.join(avatars_dir, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    avatar_url = f"/static/avatars/{filename}"
+
+    existing_profile = await profile_service.get_by_user_id(current_user.id)
+    if not existing_profile:
+        profile = await profile_service.create_profile(
+            user_id=current_user.id,
+            profile_in=GamerProfileCreate(
+                display_name=current_user.username,
+                avatar=avatar_url,
+            ),
+        )
+    else:
+        profile = await profile_service.update_profile(
+            user_id=current_user.id,
+            update_in=GamerProfileUpdate(
+                avatar=avatar_url,
+            ),
+        )
+
+    return ApiResponse.ok(
+        data=GamerProfileRead.model_validate(profile),
+        message="Profile avatar uploaded successfully.",
     )
