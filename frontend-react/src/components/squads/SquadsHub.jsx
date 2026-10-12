@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import SquadCard from './SquadCard';
 import CreateSquadModal from './CreateSquadModal';
 import { Shield, Plus, RefreshCw, Loader2 } from 'lucide-react';
+import { triggerAppNotification } from '../../utils/audio';
 
 export default function SquadsHub({ onOpenSquadChat }) {
   const { user } = useAuth();
@@ -40,6 +41,14 @@ export default function SquadsHub({ onOpenSquadChat }) {
 
   const handleSquadCreated = (newSquad) => {
     setSquads((prev) => [newSquad, ...prev]);
+    triggerAppNotification({
+      id: `sq-${Date.now()}`,
+      type: 'squad_created',
+      title: 'Squad Formed',
+      message: `Squad "${newSquad?.name || 'New Squad'}" created and ready!`,
+      time: 'Just now',
+      read: false,
+    });
     fetchSquads();
   };
 

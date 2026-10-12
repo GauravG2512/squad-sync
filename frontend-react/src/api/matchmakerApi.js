@@ -37,5 +37,9 @@ export const matchmakerApi = {
       squad_size: Array.isArray(targetPlayerIds) ? targetPlayerIds.length : 4,
     });
   },
+
+  getCandidates: async (gameName = 'Valorant') => {
+    return apiClient.get(`/matchmaking/candidates?game_name=${encodeURIComponent(gameName)}`);
+  },
 };
 

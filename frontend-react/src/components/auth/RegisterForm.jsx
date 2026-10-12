@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlus, AlertCircle } from 'lucide-react';
+import { playLoginErrorSound } from '../../utils/audio';
 
 export default function RegisterForm() {
   const { register, setAuthModalMode } = useAuth();
@@ -77,6 +78,7 @@ export default function RegisterForm() {
         preferred_game: formData.preferredGame,
       });
     } catch (err) {
+      playLoginErrorSound();
       setStatus({
         type: 'error',
         message: err.message || 'Registration failed. Email or username may already be registered.',

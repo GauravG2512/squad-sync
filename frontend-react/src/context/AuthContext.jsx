@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../api/authApi';
+import { playMissionPassedSound } from '../utils/audio';
 
 const AuthContext = createContext(null);
 
@@ -99,6 +100,7 @@ export function AuthProvider({ children }) {
     }
 
     closeAuthModal();
+    playMissionPassedSound();
     return res;
   };
 

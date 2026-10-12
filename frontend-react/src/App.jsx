@@ -12,54 +12,54 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import ChatDrawer from './components/chat/ChatDrawer';
 import ProfileHub from './components/profile/ProfileHub';
 import { 
-  Users, 
+  User, 
+  LogOut, 
+  Copy, 
+  Check, 
   Shield, 
-  CheckCircle2,
-  Bot,
-  Newspaper,
-  ShieldAlert,
   Sparkles,
-  User,
-  Dna
+  Bot,
+  MessageSquare
 } from 'lucide-react';
 
 function App() {
-  const { user, isAuthenticated, isAdmin } = useAuth();
-  const [backendHealth, setBackendHealth] = useState(null);
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('matchmaker');
   const [activeChatTarget, setActiveChatTarget] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
+  const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(true);
 
   const handleOpenChat = (target) => {
     setActiveChatTarget(target);
   };
 
-  useEffect(() => {
-    async function checkHealth() {
-      try {
-        const res = await apiClient.get('/../../health');
-        setBackendHealth(res?.data || res);
-      } catch (err) {
-        setBackendHealth({ status: 'offline' });
-      }
+  const handleCopyId = () => {
+    if (user?.id) {
+      navigator.clipboard.writeText(String(user.id));
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
     }
-    checkHealth();
-  }, []);
+  };
+
+  const userDisplayName = user?.gamer_tag || user?.username || 'Gamer';
+  const userInitials = userDisplayName.substring(0, 2).toUpperCase();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
-      {/* NAVBAR (REFERENCE DESIGN) */}
+      {/* NAVBAR WITH TOP NAVIGATION MENU BAR */}
       <Navbar 
-        backendHealth={backendHealth} 
         activeTab={activeTab} 
         onSelectTab={setActiveTab} 
+        isProfilePanelOpen={isProfilePanelOpen}
+        onToggleProfilePanel={() => setIsProfilePanelOpen((prev) => !prev)}
       />
 
       {/* AUTHENTICATION MODAL */}
       <AuthModal />
 
       {/* MAIN CONTAINER */}
-      {!isAuthenticated ? (
-        /* UNAUTHENTICATED VISITOR: STANDALONE HERO LANDING PAGE */
+      {!isAuthenticated || activeTab === 'home' || activeTab === 'overview' ? (
+        /* HOME / LANDING PAGE */
         <main style={{ flex: 1, width: '100%' }}>
           <HeroLandingPage 
             onGetStarted={() => setActiveTab('matchmaker')} 
@@ -67,242 +67,200 @@ function App() {
           />
         </main>
       ) : (
-        /* AUTHENTICATED USER: COCKPIT DASHBOARD OR OVERVIEW TAB */
-        <main style={{ flex: 1, width: '100%', paddingBottom: '60px' }}>
-          {/* OVERVIEW / HERO TAB */}
-          {activeTab === 'overview' ? (
-            <div>
-              <div style={{ maxWidth: '1200px', margin: '20px auto 0', padding: '0 24px', textAlign: 'left' }}>
+        /* AUTHENTICATED USER: CENTERED DASHBOARD WITH FIXED RIGHT SIDE PANEL */
+        <main style={{ flex: 1, width: '100%', paddingBottom: '60px', position: 'relative' }}>
+          {/* CENTERED MAIN CONTENT AREA */}
+          <div className="dashboardCenteredContainer">
+            <div style={{ width: '100%', maxWidth: '1060px' }}>
+              {activeTab === 'profile' && (
+                <ProfileHub onRetakeDna={() => setActiveTab('matchmaker')} />
+              )}
+
+              {activeTab === 'matchmaker' && (
+                <MatchmakerDashboard 
+                  onNavigateTab={setActiveTab}
+                  onOpenChat={handleOpenChat}
+                />
+              )}
+
+              {activeTab === 'friends' && (
+                <FriendsHub onOpenChat={handleOpenChat} />
+              )}
+
+              {activeTab === 'squads' && (
+                <SquadsHub onOpenSquadChat={handleOpenChat} />
+              )}
+
+              {activeTab === 'news' && (
+                <NewsHub />
+              )}
+
+              {activeTab === 'admin' && isAdmin && (
+                <AdminDashboard />
+              )}
+            </div>
+          </div>
+
+          {/* DEDICATED RIGHT-HAND SIDE PANEL (USER PROFILE CARD & LOGOUT) */}
+          {isProfilePanelOpen && (
+            <aside 
+              className="glassCard profileSidePanelFixed"
+              style={{
+                position: 'fixed',
+                right: '24px',
+                top: '88px',
+                width: '320px',
+                maxWidth: 'calc(100vw - 32px)',
+                zIndex: 850,
+                padding: '24px 20px',
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px',
+                borderRadius: '20px',
+                background: 'rgba(13, 19, 33, 0.94)',
+                backdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 25px rgba(34, 211, 238, 0.15)',
+                animation: 'slideInRight 0.25s ease-out',
+              }}
+            >
+              {/* AVATAR & USER WELCOME */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #22d3ee, #8b5cf6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '17px',
+                    fontWeight: 800,
+                    color: '#ffffff',
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    boxShadow: '0 0 20px rgba(34, 211, 238, 0.35)',
+                    flexShrink: 0,
+                  }}>
+                    {userInitials}
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <h3 style={{ fontSize: '15px', color: '#ffffff', margin: 0, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
+                      Welcome back, {userDisplayName}
+                    </h3>
+                    <p style={{ color: '#94a3b8', fontSize: '12px', margin: '2px 0 0 0', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  className="primaryBtn"
-                  onClick={() => setActiveTab('matchmaker')}
-                  style={{ marginBottom: '16px' }}
+                  onClick={() => setIsProfilePanelOpen(false)}
+                  title="Close side panel"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    padding: '2px 6px',
+                    lineHeight: 1,
+                  }}
                 >
-                  &larr; Back to AI Matchmaker
+                  &times;
                 </button>
               </div>
-              <HeroLandingPage 
-                onGetStarted={() => setActiveTab('matchmaker')} 
-                onSelectGame={() => setActiveTab('matchmaker')} 
-              />
-            </div>
-          ) : (
-            <div style={{ maxWidth: '1200px', margin: '0 auto',marginTop: '80px', padding: '32px 24px', textAlign: 'center' }}>
-              {/* LOGGED IN USER WELCOME BANNER */}
-              <div className="glassCard" style={{
-                padding: '20px 24px',
-                marginBottom: '28px',
-                textAlign: 'left',
+
+              {/* USER ID & VERIFICATION DETAILS */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                fontSize: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #22d3ee, #8b5cf6)',
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#64748b' }}>User ID:</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyId}
+                    title="Click to copy ID"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#cbd5e1',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '15px',
-                      fontWeight: 700,
-                      color: '#ffffff',
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      boxShadow: '0 0 15px rgba(34, 211, 238, 0.3)'
-                    }}>
-                      {(user?.gamer_tag || user?.username || 'G').substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <h2 style={{ fontSize: '18px', color: '#ffffff', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Space Grotesk', sans-serif" }}>
-                        Welcome back, {user?.gamer_tag || user?.username}
-                        {isAdmin && (
-                          <span className="matchBadge" style={{
-                            color: '#ff6363',
-                            borderColor: 'rgba(255, 99, 99, 0.4)',
-                            background: 'rgba(255, 99, 99, 0.15)'
-                          }}>
-                            ADMIN
-                          </span>
-                        )}
-                      </h2>
-                      <p style={{ color: '#94a3b8', fontSize: '13px', margin: '2px 0 0 0', fontFamily: "'Outfit', sans-serif" }}>
-                        ID: <span style={{ color: '#ffffff' }}>{user?.id}</span> • {user?.email}
-                      </p>
-                    </div>
-                  </div>
+                      gap: '4px',
+                      padding: 0,
+                    }}
+                  >
+                    <span>{String(user?.id || '').substring(0, 10)}...</span>
+                    {copiedId ? <Check size={12} color="#2ed573" /> : <Copy size={12} color="#94a3b8" />}
+                  </button>
+                </div>
 
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="glassBtn"
-                      onClick={() => setActiveTab('profile')}
-                      style={{ padding: '6px 14px', fontSize: '12px', color: activeTab === 'profile' ? '#22d3ee' : undefined }}
-                    >
-                      <User size={13} color="#22d3ee" />
-                      <span>Gamer Profile & DNA</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="glassBtn"
-                      onClick={() => setActiveTab('overview')}
-                      style={{ padding: '6px 14px', fontSize: '12px' }}
-                    >
-                      <Sparkles size={13} color="#22d3ee" />
-                      <span>View Landing Page</span>
-                    </button>
-                    <span className="matchBadge" style={{ color: '#2ed573', borderColor: '#2ed573', background: 'rgba(46, 213, 115, 0.12)' }}>
-                      ● Session Verified
-                    </span>
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#64748b' }}>Account Status:</span>
+                  <span className="matchBadge" style={{
+                    color: '#2ed573',
+                    borderColor: '#2ed573',
+                    background: 'rgba(46, 213, 115, 0.12)',
+                    padding: '2px 8px',
+                    fontSize: '10px'
+                  }}>
+                    ● Session Verified
+                  </span>
                 </div>
               </div>
 
-              {/* DASHBOARD MODULE TABS */}
-              <div className="dashboardTabs">
+              {/* ACTION BUTTONS: GAMER PROFILE & DNA + LOGOUT */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button
                   type="button"
-                  className={`dashTab ${activeTab === 'overview' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('overview')}
-                >
-                  <Sparkles size={15} />
-                  <span>Overview / Hero</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`dashTab ${activeTab === 'profile' ? 'active' : ''}`}
+                  className="glassBtn"
                   onClick={() => setActiveTab('profile')}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    justifyContent: 'center',
+                    color: activeTab === 'profile' ? '#22d3ee' : '#ffffff',
+                    background: activeTab === 'profile' ? 'rgba(34, 211, 238, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: activeTab === 'profile' ? 'rgba(34, 211, 238, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+                  }}
                 >
-                  <User size={15} />
+                  <User size={15} color="#22d3ee" />
                   <span>Gamer Profile & DNA</span>
                 </button>
 
                 <button
                   type="button"
-                  className={`dashTab ${activeTab === 'matchmaker' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('matchmaker')}
+                  className="glassBtn logoutBtn"
+                  onClick={logout}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    justifyContent: 'center',
+                    color: '#ff6b6b',
+                    borderColor: 'rgba(255, 107, 107, 0.3)',
+                    background: 'rgba(255, 107, 107, 0.08)',
+                  }}
                 >
-                  <Bot size={15} />
-                  <span>AI Matchmaker</span>
+                  <LogOut size={15} color="#ff6b6b" />
+                  <span>Sign Out / Logout</span>
                 </button>
-
-                <button
-                  type="button"
-                  className={`dashTab ${activeTab === 'friends' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('friends')}
-                >
-                  <Users size={15} />
-                  <span>Friends & Network</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`dashTab ${activeTab === 'squads' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('squads')}
-                >
-                  <Shield size={15} />
-                  <span>My Squads</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`dashTab ${activeTab === 'news' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('news')}
-                >
-                  <Newspaper size={15} />
-                  <span>Esports & News</span>
-                </button>
-
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className={`dashTab ${activeTab === 'admin' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('admin')}
-                    style={{
-                      color: activeTab === 'admin' ? '#ffffff' : '#ff6363'
-                    }}
-                  >
-                    <ShieldAlert size={15} />
-                    <span>Admin Hub</span>
-                  </button>
-                )}
               </div>
-
-              {/* TAB CONTENT */}
-              {activeTab === 'profile' && (
-                <div style={{ marginTop: '20px' }}>
-                  <ProfileHub onRetakeDna={() => setActiveTab('matchmaker')} />
-                </div>
-              )}
-
-              {activeTab === 'matchmaker' && (
-                <div style={{ marginTop: '20px' }}>
-                  <MatchmakerDashboard 
-                    onNavigateTab={setActiveTab}
-                    onOpenChat={handleOpenChat}
-                  />
-                </div>
-              )}
-
-              {activeTab === 'friends' && (
-                <div style={{ marginTop: '20px' }}>
-                  <FriendsHub onOpenChat={handleOpenChat} />
-                </div>
-              )}
-
-              {activeTab === 'squads' && (
-                <div style={{ marginTop: '20px' }}>
-                  <SquadsHub onOpenSquadChat={handleOpenChat} />
-                </div>
-              )}
-
-              {activeTab === 'news' && (
-                <div style={{ marginTop: '20px' }}>
-                  <NewsHub />
-                </div>
-              )}
-
-              {activeTab === 'admin' && isAdmin && (
-                <div style={{ marginTop: '20px' }}>
-                  <AdminDashboard />
-                </div>
-              )}
-
-              {/* PLATFORM SUMMARY BOX */}
-              <div className="glassCard" style={{
-                marginTop: '56px',
-                padding: '20px 24px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '14px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
-                  <CheckCircle2 color="#2ed573" size={22} />
-                  <div>
-                    <strong style={{ color: '#ffffff', fontSize: '14px', fontWeight: 600, display: 'block', fontFamily: "'Space Grotesk', sans-serif" }}>
-                      Squad Sync Command Platform • All Systems Operational
-                    </strong>
-                    <span style={{ color: '#94a3b8', fontSize: '13px' }}>
-                      AI Gamer DNA™, competitive matchmaking, player conduct moderation, and real-time WebSocket comms.
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <span className="matchBadge">
-                    Esports News
-                  </span>
-                  <span className="matchBadge">
-                    Moderation SLA
-                  </span>
-                  <span className="matchBadge">
-                    WebSockets
-                  </span>
-                </div>
-              </div>
-            </div>
+            </aside>
           )}
         </main>
       )}
@@ -314,7 +272,7 @@ function App() {
       />
 
       {/* FOOTER */}
-      {isAuthenticated && activeTab !== 'overview' && (
+      {isAuthenticated && (
         <footer style={{
           padding: '24px 40px',
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
@@ -322,7 +280,7 @@ function App() {
           color: '#64748b',
           fontSize: '12px',
           fontFamily: "'Outfit', sans-serif",
-          letterSpacing: '0.2px'
+          letterSpacing: '0.2px',
         }}>
           v1.0.0 &nbsp;|&nbsp; IEEE 830 Specification &nbsp;|&nbsp; Squad Sync AI Platform
         </footer>

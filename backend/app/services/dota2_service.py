@@ -63,7 +63,13 @@ class Dota2Service:
         Construct Steam OpenID 2.0 authentication URL.
         """
         realm = settings.STEAM_REALM
-        callback_url = return_to or settings.STEAM_RETURN_URL
+        callback_url = settings.STEAM_RETURN_URL
+        if return_to:
+            from urllib.parse import urlparse
+            parsed = urlparse(return_to)
+            allowed_hosts = {"localhost", "127.0.0.1", "squadsync.gg"}
+            if parsed.hostname in allowed_hosts or not parsed.netloc:
+                callback_url = return_to
 
         params = {
             "openid.ns": "http://specs.openid.net/auth/2.0",

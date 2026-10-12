@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn, AlertCircle } from 'lucide-react';
+import { playLoginErrorSound } from '../../utils/audio';
 
 export default function LoginForm() {
   const { login, setAuthModalMode } = useAuth();
@@ -17,6 +18,7 @@ export default function LoginForm() {
     try {
       await login(emailOrUsername, password);
     } catch (err) {
+      playLoginErrorSound();
       setStatus({
         type: 'error',
         message: err.message || 'Invalid email or password.',
@@ -106,6 +108,39 @@ export default function LoginForm() {
             </>
           )}
         </button>
+
+        {/* QUICK DEMO ACCOUNTS HELPER */}
+        <div style={{ marginTop: '16px', padding: '10px 12px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Quick Demo Login:
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => { setEmailOrUsername('phoenix@squadsync.gg'); setPassword('Password123!'); }}
+              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '8px' }}
+            >
+              PhoenixCarry
+            </button>
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => { setEmailOrUsername('omen@squadsync.gg'); setPassword('Password123!'); }}
+              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '8px' }}
+            >
+              OmenSmokes
+            </button>
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => { setEmailOrUsername('admin@squadsync.gg'); setPassword('AdminPass123!'); }}
+              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '8px', color: '#ff6363' }}
+            >
+              Admin
+            </button>
+          </div>
+        </div>
       </form>
 
       <p style={{ marginTop: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--text2)' }}>

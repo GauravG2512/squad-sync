@@ -11,13 +11,11 @@ export default function AuthModal() {
   if (!isAuthModalOpen) return null;
 
   return (
-    <div
-      className="modalOverlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) closeAuthModal();
-      }}
-    >
-      <div className="glassCard modalContainer">
+    <div className="modalOverlay">
+      <div 
+        className="glassCard modalContainer"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           className="modalCloseBtn"
           onClick={closeAuthModal}

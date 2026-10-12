@@ -194,7 +194,8 @@ class FriendshipService:
             or_(
                 User.username.ilike(clean_q),
                 User.email.ilike(clean_q),
-                GamerProfile.display_name.ilike(clean_q)
+                GamerProfile.display_name.ilike(clean_q),
+                GamerProfile.full_name.ilike(clean_q)
             )
         ).options(selectinload(User.profile)).limit(20)
 

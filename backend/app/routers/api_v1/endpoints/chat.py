@@ -82,16 +82,23 @@ async def websocket_chat_endpoint(
                     content = data.get("content", "")
                     if team_id_str and content:
                         t_id = uuid.UUID(team_id_str)
+                        # Fetch all squad members and enforce membership check (BR-3)
+                        m_stmt = select(TeamMember.user_id).where(TeamMember.team_id == t_id)
+                        m_res = await session.execute(m_stmt)
+                        member_ids = m_res.scalars().all()
+
+                        if user_id not in member_ids:
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": "Access restricted: you are not a member of this squad."
+                            })
+                            continue
+
                         saved_msg = await service.save_message(
                             sender_id=user_id,
                             content=content,
                             team_id=t_id,
                         )
-                        # Fetch all squad members
-                        m_stmt = select(TeamMember.user_id).where(TeamMember.team_id == t_id)
-                        m_res = await session.execute(m_stmt)
-                        member_ids = m_res.scalars().all()
-
                         event = {
                             "type": "new_team_message",
                             "data": saved_msg.model_dump(mode="json"),

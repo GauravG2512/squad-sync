@@ -123,6 +123,13 @@ class TeamService:
         res = await self.db.execute(stmt)
         members = res.scalars().all()
 
+        # Enforce authorization: only leader or current squad members can invite
+        if current_user_id != team.owner_id and not any(m.user_id == current_user_id for m in members):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only squad members or the squad leader can invite new players."
+            )
+
         if len(members) >= team.max_members:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Squad roster is already full (max 5 players).")
 

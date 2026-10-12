@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { chatApi } from '../../api/chatApi';
 import { friendsApi } from '../../api/friendsApi';
 import { squadsApi } from '../../api/squadsApi';
+import { playNotificationSound } from '../../utils/audio';
 import {
   MessageSquare,
   X,
@@ -147,6 +148,9 @@ function ChatDrawer({ activeChatTarget, onCloseTarget }) {
 
         if (payload.type === 'new_direct_message') {
           const newMsg = payload.data;
+          if (newMsg.sender_id !== user?.id) {
+            playNotificationSound();
+          }
           // Check if this message belongs to the currently active target
           if (
             activeTarget?.type === 'direct' &&
@@ -161,6 +165,9 @@ function ChatDrawer({ activeChatTarget, onCloseTarget }) {
           }
         } else if (payload.type === 'new_team_message') {
           const newMsg = payload.data;
+          if (newMsg.sender_id !== user?.id) {
+            playNotificationSound();
+          }
           if (activeTarget?.type === 'team' && activeTarget.id === newMsg.team_id) {
             setMessages((prev) => {
               if (prev.some((m) => m.id === newMsg.id)) return prev;

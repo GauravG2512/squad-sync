@@ -17,6 +17,8 @@ export default function ConfirmInviteModal({ isOpen, onClose, squad, selectedGam
         game: selectedGame,
         description: `Formed via Matchmaker with ${squad.length} drafted players.`,
         synergy_score: Number(synergyScore) || 88.0,
+        member_ids: squad.map((p) => p.id),
+        member_roles: squad.reduce((acc, p) => ({ ...acc, [p.id]: p.role }), {}),
       };
 
       const res = await squadsApi.createSquad(teamData);

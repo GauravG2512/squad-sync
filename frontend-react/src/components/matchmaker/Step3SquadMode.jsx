@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Crown, Users, Check, Send, Sparkles } from 'lucide-react';
+import { playSquadSelectSound } from '../../utils/audio';
 
 const INITIAL_LOBBIES = [
   {
@@ -32,6 +33,16 @@ export default function Step3SquadMode({ onSelectCreate, selectedGame }) {
   const [showLobbies, setShowLobbies] = useState(false);
   const [requestedLobbies, setRequestedLobbies] = useState({});
 
+  const handleCreateSquad = () => {
+    playSquadSelectSound();
+    if (onSelectCreate) onSelectCreate();
+  };
+
+  const handleToggleLobbies = () => {
+    playSquadSelectSound();
+    setShowLobbies((prev) => !prev);
+  };
+
   const handleRequestJoin = (lobbyId) => {
     setRequestedLobbies((prev) => ({
       ...prev,
@@ -52,7 +63,7 @@ export default function Step3SquadMode({ onSelectCreate, selectedGame }) {
 
       <div className="actionChoiceGrid" style={{ maxWidth: '980px', margin: '0 auto' }}>
         {/* CREATE SQUAD CARD */}
-        <div className="actionCard" onClick={onSelectCreate}>
+        <div className="actionCard" onClick={handleCreateSquad}>
           <div className="actionIcon">
             <Crown size={28} />
           </div>
@@ -69,7 +80,7 @@ export default function Step3SquadMode({ onSelectCreate, selectedGame }) {
         {/* JOIN EXISTING LOBBIES CARD */}
         <div
           className="actionCard"
-          onClick={() => setShowLobbies((prev) => !prev)}
+          onClick={handleToggleLobbies}
           style={{
             borderColor: showLobbies ? 'var(--cyan)' : 'rgba(255, 255, 255, 0.1)',
           }}
