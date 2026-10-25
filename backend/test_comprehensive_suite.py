@@ -347,4 +347,6 @@ async def run_suite():
         print(f"Total Failed: {len(results['failed'])}")
         print("=" * 60)
 
-asyncio.run(run_suite())
+
+if __name__ == "__main__":
+    asyncio.run(run_suite())
