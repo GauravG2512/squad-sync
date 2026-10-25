@@ -7,7 +7,6 @@ import {
   Sparkles, 
   Users, 
   ArrowRight, 
-  Star,
   CheckCircle2,
   Radio,
   Crosshair
@@ -41,26 +40,6 @@ const FEATURES = [
   },
 ];
 
-const REVIEWS = [
-  {
-    name: 'PhoenixCarry',
-    rank: 'Immortal 2 • VALORANT',
-    quote: 'Solo queue was an absolute nightmare before SquadSync. In 4 matches I found a permanent Controller and Sentinel duo. Synergy is 10x better.',
-    rating: 5,
-  },
-  {
-    name: 'ValkyrieApex',
-    rank: 'Apex Predator • Apex',
-    quote: 'Zero tilt lobbies are real. The behavioral DNA matching accurately paired me with proactive comms players who actually play for the team.',
-    rating: 5,
-  },
-  {
-    name: 'SovaIntel',
-    rank: 'FaceIT Level 10 • CS2',
-    quote: 'The AI draft bench calculates role distribution flawlessly. No more 3 AWPers or 4 Duelists fighting for the same pick.',
-    rating: 5,
-  },
-];
 
 export default function HeroLandingPage({ onGetStarted, onSelectGame }) {
   const { isAuthenticated, openRegisterModal } = useAuth();
@@ -517,55 +496,6 @@ export default function HeroLandingPage({ onGetStarted, onSelectGame }) {
       </section>
 
       {/* =========================================
-          COMMUNITY REVIEWS / VOICES FROM THE LOBBY
-      ========================================= */}
-      <section id="reviews" style={{ maxWidth: '1400px', margin: '0 auto', padding: '60px 24px' }}>
-        <h2 className="sectionTitle">TESTED BY COMPETITIVE PLAYERS</h2>
-        <p className="sectionSubtitle">Hear how real squads climbed ranks using our AI matchmaking engine.</p>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '24px',
-          marginTop: '36px',
-        }}>
-          {REVIEWS.map((rev, idx) => (
-            <div
-              key={idx}
-              className="glassCard"
-              style={{
-                padding: '28px 24px',
-                borderRadius: '20px',
-                background: 'rgba(13, 19, 33, 0.75)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {[...Array(rev.rating)].map((_, i) => (
-                  <Star key={i} size={15} fill="#f59e0b" color="#f59e0b" />
-                ))}
-              </div>
-              <p style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: 1.6, fontStyle: 'italic', margin: 0 }}>
-                "{rev.quote}"
-              </p>
-              <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <strong style={{ fontSize: '14px', color: '#ffffff', display: 'block', fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {rev.name}
-                </strong>
-                <span style={{ fontSize: '12px', color: 'var(--cyan)' }}>
-                  {rev.rank}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* =========================================
           CALL TO ACTION (CTA)
       ========================================= */}
       <section className="cta" style={{ maxWidth: '1400px', margin: '0 auto', padding: '60px 24px' }}>
@@ -611,7 +541,6 @@ export default function HeroLandingPage({ onGetStarted, onSelectGame }) {
           <a href="#hero">Overview</a>
           <a href="#games">Games</a>
           <a href="#features">Features</a>
-          <a href="#reviews">Reviews</a>
           <a href="https://discord.gg" target="_blank" rel="noopener noreferrer">Join Discord</a>
           <a href="#">Support</a>
         </div>
