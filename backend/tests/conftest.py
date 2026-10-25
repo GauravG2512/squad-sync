@@ -56,12 +56,19 @@ async def test_engine() -> AsyncGenerator[AsyncEngine | None, None]:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         yield engine
-        try:
-            async with engine.begin() as conn:
-                for table in reversed(Base.metadata.sorted_tables):
-                    await conn.execute(table.delete())
-        except Exception:
-            pass
+        # Only wipe tables if a dedicated TEST_DATABASE_URL was explicitly provided that is separate from dev DB
+        is_distinct_test_db = (
+            os.environ.get("TEST_DATABASE_URL")
+            and "test" in os.environ.get("TEST_DATABASE_URL", "").lower()
+            and os.environ.get("TEST_DATABASE_URL") != settings.SQLALCHEMY_DATABASE_URI
+        )
+        if is_distinct_test_db:
+            try:
+                async with engine.begin() as conn:
+                    for table in reversed(Base.metadata.sorted_tables):
+                        await conn.execute(table.delete())
+            except Exception:
+                pass
         await engine.dispose()
     except Exception:
         # If live PostgreSQL server is unreachable with current credentials, yield None

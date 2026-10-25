@@ -43,6 +43,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables verified/created successfully.")
+
+    # Automatically ensure default accounts and seed data are present on startup
+    try:
+        from pathlib import Path
+        import sys
+        backend_dir = str(Path(__file__).resolve().parent.parent)
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from seed_data import seed as auto_seed_data
+        await auto_seed_data()
+        logger.info("Default seed accounts verified/present in database.")
+    except Exception as exc:
+        logger.warning("Auto-seed check on startup (non-fatal): %s", exc)
+
     yield
     # Shutdown lifecycle
     logger.info("Initiating graceful shutdown for %s...", settings.APP_NAME)

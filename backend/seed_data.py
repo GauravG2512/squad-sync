@@ -48,11 +48,15 @@ async def seed():
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as session:
-        # Check if users already seeded
+        # Check if core users already seeded
         res = await session.execute(select(User))
-        existing_users = res.scalars().all()
-        if len(existing_users) > 5:
-            print(f"[!] Database already populated with {len(existing_users)} users. Refreshing news and rosters if needed.")
+        existing_users_list = res.scalars().all()
+        existing_by_uname = {u.username.lower(): u for u in existing_users_list}
+        existing_by_email = {u.email.lower(): u for u in existing_users_list}
+
+        needed_core = {"adminmaster", "progamer", "shadow", "nova", "phoenixcarry"}
+        if needed_core.issubset(existing_by_uname.keys()):
+            print(f"[!] Database already populated with core accounts ({len(existing_users_list)} users).")
             return
 
         print("[*] Seeding Users and Gamer Profiles...")
@@ -347,11 +351,53 @@ async def seed():
                     {"game": "Dota 2", "rank": "Immortal", "mmr": 6200, "win_rate": 59.4, "kd_ratio": 0.95, "matches": 1400},
                 ],
             },
+            # 10. PhoenixCarry (VALORANT Duelist / Entry)
+            {
+                "id": uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                "username": "PhoenixCarry",
+                "email": "phoenix@squadsync.gg",
+                "is_admin": False,
+                "profile": {
+                    "full_name": "Marcus Vance",
+                    "bio": "Solo queue survivor turned squad captain. Phoenix & Reyna entry specialist.",
+                    "primary_game": "VALORANT",
+                    "region": "NA-East",
+                    "primary_language": "en",
+                    "mic_enabled": True,
+                    "competitive_intent": "COMPETITIVE",
+                    "gamer_tag": "Phoenix#CARRY",
+                },
+                "dna": {
+                    "leadership": 82,
+                    "communication": 88,
+                    "strategy": 84,
+                    "teamwork": 86,
+                    "aggression": 94,
+                    "confidence": 92,
+                    "primary_role": "Duelist",
+                    "secondary_role": "Entry",
+                    "personality": "The Blazing Entry Fragger",
+                    "reasoning": "Unflinching entry aggression, high opening duel winrate, and decisive site breakthroughs.",
+                },
+                "stats": [
+                    {"game": "VALORANT", "rank": "Immortal 2", "mmr": 2180, "win_rate": 60.2, "kd_ratio": 1.42, "matches": 420},
+                ],
+            },
         ]
 
         created_users: dict[str, User] = {}
 
         for ud in users_data:
+            uname_lower = ud["username"].lower()
+            email_lower = ud["email"].lower()
+
+            if uname_lower in existing_by_uname:
+                created_users[ud["username"]] = existing_by_uname[uname_lower]
+                continue
+            if email_lower in existing_by_email:
+                created_users[ud["username"]] = existing_by_email[email_lower]
+                continue
+
             user = User(
                 id=ud["id"],
                 username=ud["username"],
@@ -364,6 +410,8 @@ async def seed():
             )
             session.add(user)
             created_users[ud["username"]] = user
+            existing_by_uname[uname_lower] = user
+            existing_by_email[email_lower] = user
 
             # Profile
             p = ud["profile"]
@@ -443,107 +491,133 @@ async def seed():
                 session.add(stat)
 
         await session.flush()
-        print(f"[+] Created {len(created_users)} users with profiles, DNA, and official stats.")
+        print(f"[+] Verified/created {len(created_users)} users with profiles, DNA, and official stats.")
 
         # Seed Friendships
         print("[*] Seeding Friendships & Social Connections...")
-        progamer = created_users["ProGamer"]
-        admin_u = created_users["AdminMaster"]
+        progamer = created_users.get("ProGamer")
+        admin_u = created_users.get("AdminMaster")
 
-        # Accepted friends for ProGamer
-        friends_to_accept = ["Nova", "Ghost", "Echo", "AdminMaster"]
-        for fname in friends_to_accept:
-            other = created_users[fname]
-            f = Friendship(
-                id=uuid.uuid4(),
-                requester_id=progamer.id,
-                addressee_id=other.id,
-                status=FriendshipStatus.ACCEPTED.value,
-                created_at=NOW - timedelta(days=10),
-                updated_at=NOW - timedelta(days=8),
-            )
-            session.add(f)
+        if progamer and admin_u:
+            # Accepted friends for ProGamer
+            friends_to_accept = ["Nova", "Ghost", "Echo", "AdminMaster", "PhoenixCarry"]
+            for fname in friends_to_accept:
+                if fname not in created_users:
+                    continue
+                other = created_users[fname]
+                f_check = await session.execute(
+                    select(Friendship).where(
+                        (Friendship.requester_id == progamer.id) & (Friendship.addressee_id == other.id)
+                    )
+                )
+                if not f_check.scalar_one_or_none():
+                    f = Friendship(
+                        id=uuid.uuid4(),
+                        requester_id=progamer.id,
+                        addressee_id=other.id,
+                        status=FriendshipStatus.ACCEPTED.value,
+                        created_at=NOW - timedelta(days=10),
+                        updated_at=NOW - timedelta(days=8),
+                    )
+                    session.add(f)
 
-        # Pending incoming friend requests for ProGamer
-        pending_incoming = ["Venom", "Valkyrie"]
-        for pname in pending_incoming:
-            other = created_users[pname]
-            f = Friendship(
-                id=uuid.uuid4(),
-                requester_id=other.id,
-                addressee_id=progamer.id,
-                status=FriendshipStatus.PENDING.value,
-                created_at=NOW - timedelta(hours=6),
-            )
-            session.add(f)
+            # Pending incoming friend requests for ProGamer
+            pending_incoming = ["Venom", "Valkyrie"]
+            for pname in pending_incoming:
+                if pname not in created_users:
+                    continue
+                other = created_users[pname]
+                f_check = await session.execute(
+                    select(Friendship).where(
+                        (Friendship.requester_id == other.id) & (Friendship.addressee_id == progamer.id)
+                    )
+                )
+                if not f_check.scalar_one_or_none():
+                    f = Friendship(
+                        id=uuid.uuid4(),
+                        requester_id=other.id,
+                        addressee_id=progamer.id,
+                        status=FriendshipStatus.PENDING.value,
+                        created_at=NOW - timedelta(hours=6),
+                    )
+                    session.add(f)
 
-        await session.flush()
-        print("[+] Created friendships and pending social requests.")
+            await session.flush()
+            print("[+] Verified friendships and pending social requests.")
 
         # Seed Teams & Squads
         print("[*] Seeding Competitive Squads...")
+        # Seed Teams & Squads
+        print("[*] Seeding Competitive Squads...")
         # Team 1: Radiant Strike Force
-        team1 = Team(
-            id=uuid.uuid4(),
-            name="Radiant Strike Force",
-            game="VALORANT",
-            owner_id=admin_u.id,
-            description="Tier-1 scrim squad training for Champions qualifiers. Strict comms and set plays.",
-            synergy_score=94.5,
-            max_members=5,
-            created_at=NOW - timedelta(days=14),
-        )
-        session.add(team1)
-
-        team1_roster = [
-            (admin_u, "Leader"),
-            (created_users["Shadow"], "Duelist"),
-            (created_users["Nova"], "Controller"),
-            (created_users["Ghost"], "Sentinel"),
-            (created_users["Echo"], "Initiator"),
-        ]
-        for member, role in team1_roster:
-            tm = TeamMember(
+        t1_check = await session.execute(select(Team).where(Team.name == "Radiant Strike Force"))
+        if not t1_check.scalar_one_or_none() and admin_u:
+            team1 = Team(
                 id=uuid.uuid4(),
-                team_id=team1.id,
-                user_id=member.id,
-                role=role,
+                name="Radiant Strike Force",
+                game="VALORANT",
+                owner_id=admin_u.id,
+                description="Tier-1 scrim squad training for Champions qualifiers. Strict comms and set plays.",
+                synergy_score=94.5,
+                max_members=5,
                 created_at=NOW - timedelta(days=14),
             )
-            session.add(tm)
+            session.add(team1)
+
+            team1_roster = [
+                (admin_u, "Leader"),
+                (created_users["Shadow"], "Duelist"),
+                (created_users["Nova"], "Controller"),
+                (created_users["Ghost"], "Sentinel"),
+                (created_users["Echo"], "Initiator"),
+            ]
+            for member, role in team1_roster:
+                tm = TeamMember(
+                    id=uuid.uuid4(),
+                    team_id=team1.id,
+                    user_id=member.id,
+                    role=role,
+                    created_at=NOW - timedelta(days=14),
+                )
+                session.add(tm)
 
         # Team 2: Aegis Syndicate
-        team2 = Team(
-            id=uuid.uuid4(),
-            name="Aegis Syndicate",
-            game="Dota 2",
-            owner_id=progamer.id,
-            description="Immortal-bracket battle cup stack. Heavy vision control and timing pushes.",
-            synergy_score=91.0,
-            max_members=5,
-            created_at=NOW - timedelta(days=7),
-        )
-        session.add(team2)
-
-        team2_roster = [
-            (progamer, "Core"),
-            (created_users["Aegis"], "Hard Support"),
-        ]
-        for member, role in team2_roster:
-            tm = TeamMember(
+        t2_check = await session.execute(select(Team).where(Team.name == "Aegis Syndicate"))
+        if not t2_check.scalar_one_or_none() and progamer and "Aegis" in created_users:
+            team2 = Team(
                 id=uuid.uuid4(),
-                team_id=team2.id,
-                user_id=member.id,
-                role=role,
+                name="Aegis Syndicate",
+                game="Dota 2",
+                owner_id=progamer.id,
+                description="Immortal-bracket battle cup stack. Heavy vision control and timing pushes.",
+                synergy_score=91.0,
+                max_members=5,
                 created_at=NOW - timedelta(days=7),
             )
-            session.add(tm)
+            session.add(team2)
+
+            team2_roster = [
+                (progamer, "Core"),
+                (created_users["Aegis"], "Hard Support"),
+            ]
+            for member, role in team2_roster:
+                tm = TeamMember(
+                    id=uuid.uuid4(),
+                    team_id=team2.id,
+                    user_id=member.id,
+                    role=role,
+                    created_at=NOW - timedelta(days=7),
+                )
+                session.add(tm)
 
         await session.flush()
-        print("[+] Created competitive teams with rosters.")
+        print("[+] Verified competitive teams with rosters.")
 
         # Seed Esports News Articles
         print("[*] Seeding Esports News & Announcements...")
+        existing_news_res = await session.execute(select(NewsArticle.source_url))
+        existing_urls = {r[0] for r in existing_news_res.fetchall() if r[0]}
+
         articles_data = [
             {
                 "title": "VALORANT Champions Tour 2026: Masters Madrid Roster Shakeup",
@@ -608,6 +682,8 @@ async def seed():
         ]
 
         for art in articles_data:
+            if art["source_url"] in existing_urls:
+                continue
             session.add(
                 NewsArticle(
                     id=uuid.uuid4(),
@@ -622,6 +698,7 @@ async def seed():
                     created_at=art["published_at"],
                 )
             )
+            existing_urls.add(art["source_url"])
 
         await session.flush()
         print(f"[+] Created {len(articles_data)} esports news articles.")

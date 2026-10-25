@@ -74,6 +74,17 @@ def main():
     if pg_online:
         print(f"[+] PostgreSQL Database : Online ({pg_host}:{pg_port}/squadsync_db)")
         pg_status_str = f"{pg_host}:{pg_port}/squadsync_db (Connected)"
+        # Ensure database tables and pre-seeded accounts exist
+        try:
+            print("[*] Verifying pre-seeded demo accounts in database...")
+            subprocess.run(
+                [py_exec, "seed_data.py"],
+                cwd=str(BACKEND_DIR),
+                capture_output=True,
+                timeout=20,
+            )
+        except Exception as e:
+            print(f"[!] Note on auto-seed: {e}")
     else:
         print(f"[!] PostgreSQL Database : OFFLINE or UNREACHABLE on {pg_host}:{pg_port}")
         print("    To initialize the database, run: python backend/setup_database.py")
