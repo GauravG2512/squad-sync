@@ -16,13 +16,13 @@ FRONTEND_DIR = ROOT_DIR / "frontend-react"
 
 def get_python_executable():
     """Returns the virtualenv Python if present, otherwise system Python."""
-    venv_python_win = BACKEND_DIR / ".venv" / "Scripts" / "python.exe"
-    venv_python_posix = BACKEND_DIR / ".venv" / "bin" / "python"
-    
-    if venv_python_win.exists():
-        return str(venv_python_win)
-    elif venv_python_posix.exists():
-        return str(venv_python_posix)
+    for base in [ROOT_DIR, BACKEND_DIR]:
+        venv_python_win = base / ".venv" / "Scripts" / "python.exe"
+        venv_python_posix = base / ".venv" / "bin" / "python"
+        if venv_python_win.exists():
+            return str(venv_python_win)
+        elif venv_python_posix.exists():
+            return str(venv_python_posix)
     return sys.executable
 
 def check_postgres():

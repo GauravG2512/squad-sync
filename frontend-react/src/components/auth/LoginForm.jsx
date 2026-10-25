@@ -110,32 +110,77 @@ export default function LoginForm() {
         </button>
 
         {/* QUICK DEMO ACCOUNTS HELPER */}
-        <div style={{ marginTop: '16px', padding: '10px 12px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Quick Demo Login:
+        <div style={{ marginTop: '16px', padding: '12px 14px', borderRadius: '14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Quick 1-Click Demo Login:
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--cyan)', fontFamily: 'var(--font-geistmono)' }}>
+              Pass: password123
+            </span>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="glassBtn"
-              onClick={() => { setEmailOrUsername('phoenix@squadsync.gg'); setPassword('Password123!'); }}
-              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '8px' }}
+              onClick={() => {
+                setEmailOrUsername('ProGamer');
+                setPassword('password123');
+              }}
+              title="Demo Account (All-Rounder / Team Captain)"
+              style={{ fontSize: '11px', padding: '6px 11px', borderRadius: '8px', borderColor: 'rgba(34, 211, 238, 0.3)', color: 'var(--cyan)' }}
+            >
+              ProGamer
+            </button>
+
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => {
+                setEmailOrUsername('Nova');
+                setPassword('password123');
+              }}
+              title="Controller / Smokes Operator"
+              style={{ fontSize: '11px', padding: '6px 11px', borderRadius: '8px' }}
+            >
+              Nova
+            </button>
+
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => {
+                setEmailOrUsername('Shadow');
+                setPassword('password123');
+              }}
+              title="Duelist / Apex Fragger"
+              style={{ fontSize: '11px', padding: '6px 11px', borderRadius: '8px' }}
+            >
+              Shadow
+            </button>
+
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => {
+                setEmailOrUsername('PhoenixCarry');
+                setPassword('password123');
+              }}
+              title="Phoenix Entry Specialist"
+              style={{ fontSize: '11px', padding: '6px 11px', borderRadius: '8px' }}
             >
               PhoenixCarry
             </button>
+
             <button
               type="button"
               className="glassBtn"
-              onClick={() => { setEmailOrUsername('omen@squadsync.gg'); setPassword('Password123!'); }}
-              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '8px' }}
-            >
-              OmenSmokes
-            </button>
-            <button
-              type="button"
-              className="glassBtn"
-              onClick={() => { setEmailOrUsername('admin@squadsync.gg'); setPassword('AdminPass123!'); }}
-              style={{ fontSize: '11px', padding: '5px 10px', borderRadius: '8px', color: '#ff6363' }}
+              onClick={() => {
+                setEmailOrUsername('admin@squadsync.gg');
+                setPassword('password123');
+              }}
+              title="Platform Administrator"
+              style={{ fontSize: '11px', padding: '6px 11px', borderRadius: '8px', color: '#ff6363', borderColor: 'rgba(255, 99, 99, 0.3)' }}
             >
               Admin
             </button>
