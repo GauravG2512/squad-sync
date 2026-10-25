@@ -1,29 +1,97 @@
 import React, { useState } from 'react';
-import { Shield, Users, UserMinus, Crown, Trash2, Award, MessageSquare } from 'lucide-react';
+import { Shield, Users, UserMinus, Crown, Trash2, Award, MessageSquare, UserPlus, LogOut, Loader2 } from 'lucide-react';
 import { squadsApi } from '../../api/squadsApi';
 import { useAuth } from '../../context/AuthContext';
+import { triggerAppNotification } from '../../utils/audio';
+import InviteTeammateModal from './InviteTeammateModal';
 
 export default function SquadCard({ squad, onSquadUpdated, onSquadDeleted, onOpenSquadChat }) {
   const { user } = useAuth();
   const [removingMemberId, setRemovingMemberId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const isOwner = user?.id && squad.owner_id === user.id;
+  const members = squad.members || [];
+  const maxMembers = squad.max_members || 5;
+  const canInvite = isOwner && members.length < maxMembers;
 
+  // Handle removing another player (owner only)
   const handleRemoveMember = async (memberUserId, memberName) => {
     if (!window.confirm(`Remove ${memberName} from this squad roster?`)) return;
 
     setRemovingMemberId(memberUserId);
     try {
       await squadsApi.removeMember(squad.id, memberUserId);
+      triggerAppNotification({
+        id: `rm-${Date.now()}`,
+        type: 'member_removed',
+        title: 'Roster Updated',
+        message: `${memberName} was removed from ${squad.name}.`,
+        time: 'Just now',
+        read: false,
+      });
       if (onSquadUpdated) onSquadUpdated();
     } catch (err) {
-      alert('Failed to remove member.');
+      alert('Failed to remove member from squad.');
     } finally {
       setRemovingMemberId(null);
     }
   };
 
-  const members = squad.members || [];
+  // Handle squad leader disbanding squad
+  const handleDisbandSquad = async () => {
+    const confirmed = window.confirm(
+      `Are you sure you want to DISBAND and delete "${squad.name}"?\n\nThis will permanently delete the squad roster and message history.`
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await squadsApi.deleteSquad(squad.id);
+      triggerAppNotification({
+        id: `disband-${Date.now()}`,
+        type: 'squad_disbanded',
+        title: 'Squad Disbanded',
+        message: `Squad "${squad.name}" has been permanently deleted.`,
+        time: 'Just now',
+        read: false,
+      });
+      if (onSquadDeleted) onSquadDeleted(squad.id);
+      else if (onSquadUpdated) onSquadUpdated();
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.message || 'Failed to disband squad.';
+      alert(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle normal member leaving squad
+  const handleLeaveSquad = async () => {
+    const confirmed = window.confirm(`Are you sure you want to LEAVE "${squad.name}"?`);
+    if (!confirmed) return;
+
+    setIsLeaving(true);
+    try {
+      await squadsApi.removeMember(squad.id, user.id);
+      triggerAppNotification({
+        id: `leave-${Date.now()}`,
+        type: 'squad_left',
+        title: 'Left Squad',
+        message: `You have left "${squad.name}".`,
+        time: 'Just now',
+        read: false,
+      });
+      if (onSquadDeleted) onSquadDeleted(squad.id);
+      else if (onSquadUpdated) onSquadUpdated();
+    } catch (err) {
+      alert('Failed to leave squad.');
+    } finally {
+      setIsLeaving(false);
+    }
+  };
 
   return (
     <div
@@ -58,41 +126,109 @@ export default function SquadCard({ squad, onSquadUpdated, onSquadDeleted, onOpe
           </p>
         </div>
 
-        {onOpenSquadChat && (
-          <button
-            type="button"
-            className="glassBtn"
-            onClick={() => onOpenSquadChat({
-              type: 'team',
-              id: squad.id,
-              name: squad.name,
-              role: squad.game,
-              isOnline: true
-            })}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              fontSize: '12px'
-            }}
-          >
-            <MessageSquare size={13} color="var(--cyan)" />
-            <span>Squad Channel</span>
-          </button>
-        )}
+        {/* HEADER ACTIONS: CHANNEL & DISBAND/LEAVE */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {onOpenSquadChat && (
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => onOpenSquadChat({
+                type: 'team',
+                id: squad.id,
+                name: squad.name,
+                role: squad.game,
+                isOnline: true
+              })}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                fontSize: '12px'
+              }}
+            >
+              <MessageSquare size={13} color="var(--cyan)" />
+              <span>Squad Channel</span>
+            </button>
+          )}
+
+          {isOwner ? (
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={handleDisbandSquad}
+              disabled={isDeleting}
+              title="Disband and delete this squad (Leader only)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                color: '#f87171',
+                borderColor: 'rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              <span>Disband Squad</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={handleLeaveSquad}
+              disabled={isLeaving}
+              title="Leave this squad roster"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                color: '#f87171',
+                borderColor: 'rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              {isLeaving ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
+              <span>Leave Squad</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ROSTER SECTION */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-geistmono)', color: 'var(--text2)', fontWeight: 500 }}>
-            ACTIVE ROSTER ({members.length}/{squad.max_members || 5})
-          </span>
-          {isOwner && (
-            <span style={{ fontSize: '11px', fontFamily: 'var(--font-geistmono)', color: '#facc15', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Crown size={12} /> SQUAD LEADER
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-geistmono)', color: 'var(--text2)', fontWeight: 500 }}>
+              ACTIVE ROSTER ({members.length}/{maxMembers})
             </span>
+            {isOwner && (
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-geistmono)', color: '#facc15', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Crown size={12} /> SQUAD LEADER
+              </span>
+            )}
+          </div>
+
+          {canInvite && (
+            <button
+              type="button"
+              className="glassBtn"
+              onClick={() => setIsInviteModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                color: 'var(--cyan)',
+                borderColor: 'rgba(34, 211, 238, 0.35)',
+                background: 'rgba(34, 211, 238, 0.08)'
+              }}
+            >
+              <UserPlus size={12} />
+              <span>Invite Player</span>
+            </button>
           )}
         </div>
 
@@ -189,6 +325,16 @@ export default function SquadCard({ squad, onSquadUpdated, onSquadDeleted, onOpe
           )}
         </div>
       </div>
+
+      {/* INVITE TEAMMATE MODAL */}
+      <InviteTeammateModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        squad={squad}
+        onMemberInvited={() => {
+          if (onSquadUpdated) onSquadUpdated();
+        }}
+      />
     </div>
   );
 }

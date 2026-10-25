@@ -52,6 +52,10 @@ export default function SquadsHub({ onOpenSquadChat }) {
     fetchSquads();
   };
 
+  const handleSquadDeleted = (squadId) => {
+    setSquads((prev) => prev.filter((s) => s.id !== squadId));
+  };
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'left' }}>
       {/* HEADER & ACTIONS */}
@@ -155,6 +159,7 @@ export default function SquadsHub({ onOpenSquadChat }) {
               key={squad.id}
               squad={squad}
               onSquadUpdated={fetchSquads}
+              onSquadDeleted={handleSquadDeleted}
               onOpenSquadChat={onOpenSquadChat}
             />
           ))}

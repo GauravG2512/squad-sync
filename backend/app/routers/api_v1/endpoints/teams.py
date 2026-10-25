@@ -94,3 +94,19 @@ async def remove_member(
     service = TeamService(db)
     await service.remove_member(team_id=team_id, current_user_id=current_user.id, target_user_id=user_id)
     return ApiResponse.ok(data=True, message="Member removed from squad.")
+
+
+@router.delete(
+    "/{team_id}",
+    response_model=ApiResponse[bool],
+    summary="Disband / Delete Squad",
+    description="Permanently disbands and deletes a squad roster. Strictly restricted to the squad leader.",
+)
+async def delete_squad(
+    team_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DatabaseSession,
+):
+    service = TeamService(db)
+    await service.delete_team(team_id=team_id, current_user_id=current_user.id)
+    return ApiResponse.ok(data=True, message="Squad disbanded successfully.")

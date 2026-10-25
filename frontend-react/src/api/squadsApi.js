@@ -20,4 +20,8 @@ export const squadsApi = {
   removeMember: async (teamId, userId) => {
     return apiClient.delete(`/teams/${teamId}/members/${userId}`);
   },
+
+  deleteSquad: async (teamId) => {
+    return apiClient.delete(`/teams/${teamId}`);
+  },
 };

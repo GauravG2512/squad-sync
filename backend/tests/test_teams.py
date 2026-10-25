@@ -101,3 +101,47 @@ async def test_team_invite_and_remove(authenticated_client: AsyncClient, db_sess
     # 4. Remove member
     del_res = await authenticated_client.delete(f"/api/v1/teams/{team_id}/members/{recruit.id}")
     assert del_res.status_code == 200
+
+    # 5. Squad leader disbands team
+    disband_res = await authenticated_client.delete(f"/api/v1/teams/{team_id}")
+    assert disband_res.status_code == 200
+    assert disband_res.json()["data"] is True
+
+    # 6. Verifying team no longer exists
+    get_res = await authenticated_client.get(f"/api/v1/teams/{team_id}")
+    assert get_res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_team_disband_unauthorized(authenticated_client: AsyncClient, db_session: AsyncSession, mock_user: User):
+    """Test that non-leaders cannot disband a squad."""
+    from app.models.team import Team, TeamMember
+
+    # Create team owned by another user
+    other_owner = User(
+        id=uuid.uuid4(),
+        username="foreign_leader",
+        email="foreign_leader@squadsync.gg",
+        password_hash=get_password_hash("Pass1234!"),
+        is_active=True,
+    )
+    db_session.add(other_owner)
+    await db_session.commit()
+
+    team = Team(
+        id=uuid.uuid4(),
+        name="Foreign Squad",
+        game="VALORANT",
+        owner_id=other_owner.id,
+        synergy_score=85.0,
+    )
+    db_session.add(team)
+    # Add authenticated mock_user as normal member
+    db_session.add(TeamMember(team_id=team.id, user_id=other_owner.id, role="Captain"))
+    db_session.add(TeamMember(team_id=team.id, user_id=mock_user.id, role="Flex"))
+    await db_session.commit()
+
+    # Authenticated user tries to disband team owned by foreign_leader -> must be 403 Forbidden
+    res = await authenticated_client.delete(f"/api/v1/teams/{team.id}")
+    assert res.status_code == 403
+    assert "leader" in res.json().get("detail", res.json().get("message", "")).lower()

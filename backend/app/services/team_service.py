@@ -144,6 +144,23 @@ class TeamService:
         self.db.add(new_member)
         await self.db.commit()
         self.db.expire_all()
+
+        # Notify the added member via WebSocket in real time
+        try:
+            from app.core.websocket_manager import ws_manager
+            inv_event = {
+                "type": "squad_joined",
+                "data": {
+                    "team_id": str(team.id),
+                    "team_name": team.name,
+                    "game": team.game,
+                    "role": invite.role,
+                }
+            }
+            await ws_manager.send_direct_message(inv_event, invite.user_id)
+        except Exception:
+            pass
+
         return await self.get_team(team_id, current_user_id, bypass_member_check=True)
 
     async def remove_member(self, team_id: uuid.UUID, current_user_id: uuid.UUID, target_user_id: uuid.UUID) -> bool:
@@ -162,5 +179,36 @@ class TeamService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found in this squad.")
 
         await self.db.delete(member)
+        await self.db.commit()
+        return True
+
+    async def delete_team(self, team_id: uuid.UUID, current_user_id: uuid.UUID) -> bool:
+        """Disbands and permanently deletes a squad roster (restricted to squad leader)."""
+        team = await self.db.get(Team, team_id)
+        if not team:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Squad not found.")
+
+        if current_user_id != team.owner_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the squad leader can disband this squad."
+            )
+
+        # Notify active members via WebSocket before deletion if connected
+        try:
+            from app.core.websocket_manager import ws_manager
+            stmt = select(TeamMember.user_id).where(TeamMember.team_id == team_id)
+            res = await self.db.execute(stmt)
+            member_ids = res.scalars().all()
+            if member_ids:
+                event = {
+                    "type": "squad_disbanded",
+                    "data": {"team_id": str(team_id), "team_name": team.name}
+                }
+                await ws_manager.broadcast_to_users(event, member_ids)
+        except Exception:
+            pass
+
+        await self.db.delete(team)
         await self.db.commit()
         return True
