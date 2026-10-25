@@ -1,4 +1,4 @@
-﻿"""
+"""
 Gaming News Service — NewsAPI.org integration with DB caching and graceful fallback.
 
 Fetch strategy:
@@ -28,23 +28,109 @@ from app.schemas.news import NewsArticleCreate, NewsArticleResponse
 logger = logging.getLogger("squadsync.news")
 
 # ---------------------------------------------------------------------------
-# NewsAPI query map — maps our game filter values to effective search terms
+# NewsAPI query map — strictly targets competitive esports tournaments & leagues
 # ---------------------------------------------------------------------------
 GAME_QUERY_MAP: dict[str, str] = {
-    "VALORANT":      "VALORANT esports OR valorant game",
-    "CS2":           "Counter-Strike 2 OR CS2 esports",
-    "Apex Legends":  "Apex Legends esports OR apex legends season",
-    "Rainbow Six":   "Rainbow Six Siege esports OR r6 siege",
-    "Dota 2":        "Dota 2 esports OR dota2 patch",
-    "Call of Duty":  "Call of Duty warzone OR cod esports",
-    "General":       "esports gaming competitive multiplayer",
+    "VALORANT": (
+        '("VALORANT") AND ("esports" OR "VCT" OR "Champions" OR "Masters" OR "Challengers" OR "tournament" OR "pro") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal)'
+    ),
+    "CS2": (
+        '("Counter-Strike" OR "CS2") AND ("esports" OR "Major" OR "IEM" OR "BLAST" OR "ESL" OR "PGL" OR "tournament" OR "pro") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal)'
+    ),
+    "Apex Legends": (
+        '("Apex Legends") AND ("esports" OR "ALGS" OR "tournament" OR "championship" OR "pro" OR "roster") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal)'
+    ),
+    "Rainbow Six": (
+        '("Rainbow Six" OR "R6 Siege") AND ("esports" OR "Six Invitational" OR "Major" OR "pro league" OR "tournament") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal)'
+    ),
+    "Dota 2": (
+        '("Dota 2") AND ("esports" OR "The International" OR "Major" OR "tournament" OR "pro" OR "roster") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal)'
+    ),
+    "Call of Duty": (
+        '("Call of Duty" OR "CDL") AND ("esports" OR "Championship" OR "Major" OR "pro league" OR "tournament") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal)'
+    ),
+    "General": (
+        '("esports" OR "pro gaming") AND ("tournament" OR "championship" OR "qualifier" OR "major" OR "league") '
+        'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR deal OR crypto)'
+    ),
 }
 
-# Default broad query used when no game filter is given
+# Default broad query strictly constrained to competitive esports
 DEFAULT_QUERY = (
-    "VALORANT OR \"Counter-Strike 2\" OR \"Apex Legends\" OR \"Rainbow Six Siege\" "
-    "OR \"Dota 2\" OR \"Call of Duty\" esports"
+    '("esports" OR "pro gaming" OR "tournament" OR "championship" OR "VCT" OR "ALGS" OR "IEM" OR "The International" OR "Six Invitational" OR "CDL" OR "DreamHack") '
+    'AND ("VALORANT" OR "Counter-Strike" OR "CS2" OR "Apex Legends" OR "Rainbow Six" OR "Dota 2" OR "Call of Duty" OR "League of Legends" OR "Overwatch") '
+    'NOT (review OR headset OR mouse OR keyboard OR laptop OR GPU OR RAM OR deal OR discount OR crypto OR "data centre" OR "data center")'
 )
+
+# Traditional physical sports terms that frequently produce false positives
+TRADITIONAL_SPORTS_EXCLUDE = {
+    "nba", "nfl", "mlb", "nhl", "motogp", "formula 1", "nascar",
+    "college football", "quarterback", "touchdown", "pistons", "lakers",
+    "yankees", "celtics", "real madrid", "barcelona", "premier league",
+    "baseball", "cricket", "rugby", "super bowl-level", "pga tour", "golf", "tennis"
+}
+
+# Hardware, non-gaming tech, and general news topics to filter out
+HARDWARE_AND_NON_ESPORTS_EXCLUDE = {
+    "data centre", "data center", "wall street", "stock price", "shares rise",
+    "shares fall", "quarterly earnings", "review:", "headset review", "mouse review",
+    "keyboard review", "typhoon", "cyclone", "earthquake", "hurricane", "flood",
+    "president", "election", "senate", "parliament", "congress", "crypto", "bitcoin",
+    "polymarket", "massage gaming chair", "gaming chair", "laptop review", "gpu review",
+    "k/da", "k-pop", "kpop", "singer", "album", "soundtrack", "music video"
+}
+
+# Competitive esports signals required for an article to be accepted
+ESPORTS_INDICATORS = {
+    "esports", "e-sports", "pro gaming", "tournament", "championship", "champions",
+    "major", "vct", "algs", "invitational", "pro league", "qualifier", "qualifiers",
+    "playoffs", "grand final", "grand finals", "bracket", "prize pool", "lan event",
+    "dreamhack", "esl", "pgl", "roster", "benched", "signed", "cdl", "blast",
+    "iem", "the international", "six invitational", "esports world cup", "ewc"
+}
+
+# Competitive games and top-tier leagues
+COMPETITIVE_GAMES_AND_LEAGUES = {
+    "valorant", "counter-strike", "cs2", "cs:go", "csgo", "apex legends", "apex",
+    "rainbow six", "r6 siege", "r6s", "dota 2", "dota", "call of duty", "warzone", "cod",
+    "league of legends", "overwatch", "rocket league", "smash bros", "esports world cup", "ewc",
+    "vct", "algs", "cdl", "iem", "blast", "six invitational"
+}
+
+
+def is_genuine_esports_article(title: str, description: str) -> bool:
+    """
+    Validates that a fetched article is genuinely about competitive esports
+    and filters out hardware reviews, physical sports, politics, and clickbait.
+    """
+    text = f"{title} {description or ''}".lower()
+
+    # Reject non-English or garbled text
+    ascii_alpha_count = sum(1 for c in title if c.isascii() and c.isalpha())
+    if ascii_alpha_count < 10:
+        return False
+
+    # 1. Reject if excluded traditional sports or hardware terms match
+    for term in TRADITIONAL_SPORTS_EXCLUDE | HARDWARE_AND_NON_ESPORTS_EXCLUDE:
+        if term in text:
+            return False
+
+    # 2. Must contain at least one competitive esports keyword
+    if not any(kw in text for kw in ESPORTS_INDICATORS):
+        return False
+
+    # 3. Must be associated with a competitive video game or competitive esports league
+    if not any(g in text for g in COMPETITIVE_GAMES_AND_LEAGUES) and "esports" not in text and "e-sports" not in text:
+        return False
+
+    return True
+
 
 # Map category names to fragment keywords for display
 CATEGORY_KEYWORD_MAP: dict[str, list[str]] = {
@@ -114,12 +200,12 @@ def _infer_category(title: str, description: str) -> str:
 def _infer_game(title: str, description: str) -> str:
     text = (title + " " + (description or "")).lower()
     game_hints = {
-        "VALORANT":      ["valorant", "vct"],
-        "CS2":           ["counter-strike 2", "cs2", "csgo"],
-        "Apex Legends":  ["apex legends", "apex"],
-        "Rainbow Six":   ["rainbow six", "r6s", "r6 siege"],
-        "Dota 2":        ["dota 2", "dota2"],
-        "Call of Duty":  ["call of duty", "warzone", "cod"],
+        "VALORANT":      ["valorant", "vct", "masters tokyo", "masters shanghai", "masters madrid", "champions tour"],
+        "CS2":           ["counter-strike", "cs2", "cs:go", "csgo", "pgl major", "iem katowice", "iem cologne", "blast premier"],
+        "Apex Legends":  ["apex legends", "apex", "algs"],
+        "Rainbow Six":   ["rainbow six", "r6s", "r6 siege", "six invitational"],
+        "Dota 2":        ["dota 2", "dota2", "the international", "dpc"],
+        "Call of Duty":  ["call of duty", "warzone", "cod", "cdl"],
     }
     for game, hints in game_hints.items():
         if any(hint in text for hint in hints):
@@ -209,8 +295,13 @@ class NewsService:
             "apiKey":   settings.NEWS_API_KEY,
         }
 
+        headers = {
+            "User-Agent": "SquadSync/1.0",
+            "X-Api-Key": settings.NEWS_API_KEY,
+        }
+
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
                 resp = await client.get(
                     f"{settings.NEWS_API_BASE_URL}/everything", params=params
                 )
@@ -235,6 +326,12 @@ class NewsService:
                 continue
 
             description: str = raw.get("description") or ""
+
+            # Ensure only verified competitive esports news is accepted
+            if not is_genuine_esports_article(title, description):
+                logger.debug("Skipping non-esports article from API: %s", title)
+                continue
+
             published_str    = raw.get("publishedAt", "")
 
             try:
@@ -249,10 +346,11 @@ class NewsService:
                 "source_url":   raw.get("url") or "",
                 "image_url":    raw.get("urlToImage") or "",
                 "game":         _infer_game(title, description),
-                "category":     _infer_category(title, description),
+                "category":     "Esports",
                 "published_at": published_at,
             })
 
+        logger.info("Retained %d genuine esports articles after filtering.", len(normalized))
         return normalized
 
     async def _upsert_articles(self, articles: list[dict[str, Any]]) -> None:
